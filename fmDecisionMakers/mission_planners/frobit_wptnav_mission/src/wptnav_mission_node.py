@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #/****************************************************************************
 # Frobit wptnav_mission_node
-# Copyright (c) 2013-2015, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2013-2016, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,12 +39,14 @@ Revision
 2015-09-22 KJ Implemented behaviour classes (remote control and wptnav)
               Inserted HMI abstraction layer through the /fmHMI/remote_control
               and /fmHMI/remote_control_feedback topics.
+2016-10-14 KJ Changed automode message type from IntStamped to StringStamped
+              and default topic name to /fmDecision/platform_behaviour
 """
 
 # ROS import
 import rospy
 from std_msgs.msg import Bool, Char
-from msgs.msg import BoolStamped, IntStamped, RemoteControl, RemoteControlFeedback
+from msgs.msg import BoolStamped, StringStamped, RemoteControl, RemoteControlFeedback
 
 # Behaviour import
 from behaviour_remote_control import behaviour_remote_control
@@ -52,11 +54,12 @@ from behaviour_wptnav import behaviour_wptnav
 
 class mission_node():
 	def __init__(self):
-		self.update_rate = 20 # [Hz]
+		self.update_rate = 20 # [Hz] 
+		self.pub_behaviour_rate = 5 # [Hz] note must be lower than self.update_rate
 
 		# robot state
-		self.BHV_RC = 0
-		self.BHV_WPTNAV = 1
+		self.BHV_RC = 'RC'
+		self.BHV_WPT = 'WPT'
 		self.bhv = self.BHV_RC
 
 		# load behaviours
@@ -67,7 +70,7 @@ class mission_node():
 		topic_rc = rospy.get_param("~remote_control_sub",'/fmHMI/remote_control')
 		topic_rc_feedback = rospy.get_param("~remote_control_feedback_pub",'/fmHMI/remote_control_feedback')
 		deadman_topic = rospy.get_param("~deadman_pub", "/fmSafe/deadman")
-		behaviour_topic = rospy.get_param("~automode_pub", "/fmPlan/automode")
+		behaviour_topic = rospy.get_param("~platform_behaviour_pub", "/fmDecision/platform_behaviour")
 
 		# setup deadman publish topic
 		self.deadman_state = False
@@ -75,13 +78,15 @@ class mission_node():
 		self.deadman_pub = rospy.Publisher(deadman_topic, BoolStamped, queue_size=1)
 
 		# setup automode publish topic
-		self.behaviour_msg = IntStamped()
-		self.behaviour_pub = rospy.Publisher(behaviour_topic, IntStamped, queue_size=1)
+		self.behaviour_msg = StringStamped()
+		self.behaviour_pub = rospy.Publisher(behaviour_topic, StringStamped, queue_size=1)
 		
 		# setup subscription topic callbacks
 		rospy.Subscriber(topic_rc, RemoteControl, self.on_rc_topic)
 
-		# sall updater function
+		# call updater function
+		self.update_count = 0
+		self.pub_behaviour_interval = self.update_rate / self.pub_behaviour_rate
 		self.r = rospy.Rate(self.update_rate)
 		self.updater()
 
@@ -90,14 +95,14 @@ class mission_node():
 		if (msg.switches & 0x01) == 0:
 			behaviour = self.BHV_RC
 		else:
-			behaviour = self.BHV_WPTNAV
+			behaviour = self.BHV_WPT
 
 		# if behaviour changed
 		if behaviour != self.bhv:
 			# suspend current behavour
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.suspend()
-			elif self.bhv == self.BHV_WPTNAV:
+			elif self.bhv == self.BHV_WPT:
 				self.bhv_wn.suspend()
 	
 			# activate new behaviour
@@ -105,15 +110,15 @@ class mission_node():
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.activate()
 				rospy.loginfo(rospy.get_name() + ": Switching to remote control behaviour")
-			elif self.bhv == self.BHV_WPTNAV:
+			elif self.bhv == self.BHV_WPT:
 				self.bhv_wn.activate()
 				rospy.loginfo(rospy.get_name() + ": Switching to waypoint navigation behaviour")
-
+			self.publish_active_behaviour_message()
 
 		# pass remote control info to current behaviour
 		if self.bhv == self.BHV_RC:
 			self.bhv_rc.on_rc_topic(msg)
-		elif self.bhv == self.BHV_WPTNAV:
+		elif self.bhv == self.BHV_WPT:
 			self.bhv_wn.on_rc_topic(msg)
 
 	def publish_deadman_message(self):
@@ -122,7 +127,7 @@ class mission_node():
 		# retrieve deadman_state from current behaviour
 		if self.bhv == self.BHV_RC:
 			self.deadman_msg.data = self.bhv_rc.deadman_state
-		elif self.bhv == self.BHV_WPTNAV:
+		elif self.bhv == self.BHV_WPT:
 			self.deadman_msg.data = self.bhv_wn.deadman_state
 
 		# print a warning if the deadman_state has changed
@@ -147,12 +152,15 @@ class mission_node():
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.update()
 			# if waypoint navigation behaviour
-			elif self.bhv == self.BHV_WPTNAV:
+			elif self.bhv == self.BHV_WPT:
 				self.bhv_wn.update()
 
 			# publish messages
 			self.publish_deadman_message()
-			self.publish_active_behaviour_message()
+
+			self.update_count += 1
+			if self.update_count % self.pub_behaviour_interval == False:
+				self.publish_active_behaviour_message()
 
 			# go back to sleep
 			self.r.sleep()
