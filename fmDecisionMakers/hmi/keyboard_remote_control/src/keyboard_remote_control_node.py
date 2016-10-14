@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #/****************************************************************************
 # Keyboard remote control node
-# Copyright (c) 2013-2015, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2013-2016, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,7 @@ Revision
 2015-10-02 KJ Seperated the remote control output from the mission planner.
               This component is now converting the keyboard to a standardized
               remote control topic.
+2016-10-14 KJ Added a help text (printed at launch)
 """
 
 import rospy
@@ -109,6 +110,15 @@ class ROSnode():
 		# setup subscription topic callbacks
 		rospy.Subscriber(topic_kbd, Char, self.on_keyboard_msg)
 
+		# print help
+		rospy.logwarn("Help")
+		rospy.logwarn("Press e to enable actuation.")
+		rospy.logwarn("Press space bar to disable actuation.")
+		rospy.logwarn("Press r to switch to remote control.")
+		rospy.logwarn("Use the arrow keys to remote control the frobit.")
+		rospy.logwarn("Press s to stop the frobit.")
+		rospy.logwarn("Press a to switch to autonomous mode.")
+
 		# call updater function
 		self.r = rospy.Rate(self.update_rate)
 		self.updater()
@@ -124,11 +134,11 @@ class ROSnode():
 				self.left_right = 0
 			elif msg.data == self.KEY_e: # enable actuation
 				self.rc_msg.deadman_state = True
-			elif msg.data == self.KEY_a:
+			elif msg.data == self.KEY_a: #autonomous mode
 				self.rc_msg.switches |= 0x01
 				self.up_down = 0
 				self.left_right = 0
-			elif msg.data == self.KEY_r:
+			elif msg.data == self.KEY_r: # remote control
 				self.rc_msg.switches &= ~0x01
 			elif msg.data == self.KEY_s:
 				self.up_down = 0
