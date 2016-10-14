@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #/****************************************************************************
 # Waypoint Navigation
-# Copyright (c) 2013-2015, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2013-2016, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,9 @@
 2015-10-03 KJ Seperated the remote control output from the mission planner.
               this component now monitors /fmHMI/remote_control insted of
               /fmLib/joy
+2016-10-14 KJ Changed automode message type from IntStamped to StringStamped
+              and default topic name to /fmDecision/platform_behaviour
+
 """
 
 # imports
@@ -47,7 +50,7 @@ import rospy
 import numpy as np
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TwistStamped
-from msgs.msg import BoolStamped, IntStamped, FloatStamped, FloatArrayStamped, waypoint_navigation_status, RemoteControl
+from msgs.msg import BoolStamped, StringStamped, FloatStamped, FloatArrayStamped, waypoint_navigation_status, RemoteControl
 from math import pi, atan2
 from waypoint_list import waypoint_list
 from waypoint_navigation import waypoint_navigation
@@ -62,7 +65,9 @@ class WptNavNode():
 		self.STATE_WAIT = 2
 		self.state = self.STATE_IDLE
 		self.state_prev = self.state
-		self.automode_warn = False
+		self.BHV_RC = 'RC' # remote control (platform behaviour)
+		self.BHV_WPT = 'WPT' # waypoint navigation (platform behaviour)
+		self.platform_behaviour_warn = False
 		self.wait_after_arrival = 0.0
 		self.wait_timeout = 0.0
 		self.status = 0
@@ -88,7 +93,7 @@ class WptNavNode():
 		self.pid_publish_interval = rospy.get_param("~pid_publish_interval", 0) 
 
 		# get topic names
-		self.automode_topic = rospy.get_param("~automode_sub",'/fmPlan/automode')
+		self.platform_behaviour_topic = rospy.get_param("~platform_behaviour_sub",'/fmDecision/platform_behaviour')
 		self.pose_topic = rospy.get_param("~pose_sub",'/fmKnowledge/pose')
 		topic_rc = rospy.get_param("~remote_control_sub",'/fmHMI/remote_control')
 		self.cmdvel_topic = rospy.get_param("~cmd_vel_pub",'/fmCommand/cmd_vel')
@@ -145,7 +150,7 @@ class WptNavNode():
 		self.wptlist_loaded = False
 
 		# setup subscription topic callbacks
-		rospy.Subscriber(self.automode_topic, IntStamped, self.on_automode_message)
+		rospy.Subscriber(self.platform_behaviour_topic, StringStamped, self.on_platform_behaviour_message)
 		rospy.Subscriber(self.pose_topic, Odometry, self.on_pose_message)
 		rospy.Subscriber(topic_rc, RemoteControl, self.on_rc_message)
 
@@ -188,8 +193,8 @@ class WptNavNode():
 		else:
 			rospy.loginfo(rospy.get_name() + ": This is the first waypoint")
 
-	def on_automode_message(self, msg):
-		if msg.data == 1: # if autonomous waypoint navigation mode is active
+	def on_platform_behaviour_message(self, msg):
+		if msg.data == self.BHV_WPT: # if waypoint navigation mode is active
 			if self.state == self.STATE_IDLE:
 				if self.wptnav.pose != False: # if we have a valid pose				
 					self.state = self.STATE_NAVIGATE
@@ -204,14 +209,22 @@ class WptNavNode():
 						rospy.loginfo(rospy.get_name() + ": Resuming waypoint navigation")
 
 				else: # no valid pose yet
-					if self.automode_warn == False:
-						self.automode_warn = True
+					if self.platform_behaviour_warn == False:
+						self.platform_behaviour_warn = True
 						rospy.logwarn(rospy.get_name() + ": Absolute pose is required for autonomous navigation")
-		else: # if manual mode requested
+
+		elif msg.data == self.BHV_RC: # if remote control behaviour is active
 			if self.state != self.STATE_IDLE:
 				self.state = self.STATE_IDLE					
 				self.wptnav.standby() 
-				rospy.loginfo(rospy.get_name() + ": Switching to manual control")			
+				rospy.loginfo(rospy.get_name() + ": Switching to manual control")
+
+		else: # if an unknown behaviour is active
+			if self.state != self.STATE_IDLE:
+				self.state = self.STATE_IDLE					
+				self.wptnav.standby() 
+				rospy.logerr(rospy.get_name() + ": Switching to an unknown platform behaviour: %s" % msg.data)
+
 			
 	def on_pose_message(self, msg):
 		qx = msg.pose.pose.orientation.x
