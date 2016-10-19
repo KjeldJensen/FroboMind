@@ -1,9 +1,17 @@
-<!-- launch example -->
+<!-- launch example
+
+On Ubuntu please run this command to install the Hokuyo mode:
+	sudo apt install ros-kinetic-urg-node
+
+To enable Ubuntu users to open the serial device please add the
+user to the group 'dialout' in /etc/group
+-->
+
 
 <launch>
 	<group ns="fmSensors">
 		<!-- interface to a Hokuyo lidar (included to demonstrate example) -->
-		<node name="hokuyo" pkg="hokuyo_node" type="hokuyo_node" output="screen"  respawn="true">
+		<node name="hokuyo" pkg="urg_node" type="urg_node" output="screen"  respawn="true">
 			<param name="port" value="/dev/ttyACM0"/>
 			<param name="frame_id" type="string" value="/laser_link"/> 
 			<param name="calibrate_time" value="true"/>
