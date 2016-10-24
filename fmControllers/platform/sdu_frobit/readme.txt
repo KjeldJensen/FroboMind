@@ -1,4 +1,4 @@
-This readme file contains information about the Frobit V2 interface component.
+This readme file contains information about the Frobit interface component.
 
 
 

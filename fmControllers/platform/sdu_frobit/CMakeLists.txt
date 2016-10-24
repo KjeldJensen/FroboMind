@@ -66,15 +66,15 @@ include_directories(include
 # )
 
 ## Declare a cpp executable
- add_executable(frobit_node src/frobit_interface.cpp src/frobit_interface_node.cpp)
+# add_executable(frobit_node src/frobit_interface.cpp src/frobit_interface_node.cpp)
 
 ## Add dependencies to the executable
- add_dependencies(frobit_node ${PROJECT_NAME} msgs_gencpp geometry_msgs_gencpp)
+# add_dependencies(frobit_node ${PROJECT_NAME} msgs_gencpp geometry_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(frobit_node
-   ${catkin_LIBRARIES}
- )
+# target_link_libraries(frobit_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
