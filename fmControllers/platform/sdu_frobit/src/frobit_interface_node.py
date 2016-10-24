@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #/****************************************************************************
-# Frobobit V2 Interface
+# Frobobit Interface
 # Copyright (c) 2013-2016, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
@@ -36,6 +36,8 @@
               FroboMind Controller
 2015-08-19 KJ Renamed "deadman" topic to "actuation_enable"
 2016-01-17 KJ Implemented a global caster_front (true/false) parameter
+2016-10-24 KJ Renamed from sdu_frobit_v2 to sdu_frobit (the old one was
+              obsolete)
 """
 
 # imports
