@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 #*****************************************************************************
 # frobomind_make script
-# Copyright (c) 2014-2015, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2014-2016, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -11,9 +11,9 @@
 #	* Redistributions in binary form must reproduce the above copyright
 #	  notice, this list of conditions and the following disclaimer in the
 #	  documentation and/or other materials provided with the distribution.
-#	* Neither the name FroboMind nor the
-#	  names of its contributors may be used to endorse or promote products
-#	  derived from this software without specific prior written permission.
+#   * Neither the name of the copyright holder nor the names of its
+#     contributors may be used to endorse or promote products derived from
+#     this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -32,27 +32,32 @@
 # 2014-03-17 KJ First version
 # 2014-03-26 KJ A few optimizations, no functionality changed.
 # 2015-03-04 KJ Updated to support external projects
+# 2016-10-31 KJ Added autocompletion,
+#               added support for empty lines and comments in fmMake.txt files,
+#               more elaborate status texts,
+#               bug fixes.
 #*****************************************************************************
 
 # find out where FroboMind is
-ROOT_FM=$(dirname $(readlink -f $0))
+ROOT_FM_BIN=$(dirname $(readlink -f $0))
+ROOT_FM=$ROOT_FM_BIN/..
 ROOT_SRC=$ROOT_FM/..
 ROOT_WS=$ROOT_FM/../..
 FILE_MAKE="fmMake.txt"
 
 # this function shows the help text
 show_help(){
-	echo "\nFroboMind make v2015-03-04" 
+	echo "\nFroboMind make v2016-10-31" 
     echo "Usage:"
-    echo "  frobomind_make [options] command"
+    echo "  fm_make [options] command"
 	echo "Commands:"
-	echo "  all             Make all FroboMind components"
-	echo "  list            List all FroboMind components"
-    echo "  /frobomind/...  Make FroboMind components listed in $FILE_MAKE in this directory"
-    echo "  clean           Make clean"
-    echo "  cleanall        Clean up everything (remove devel and build directories)"
+	echo "  all         Make all FroboMind components"
+	echo "  list        List all FroboMind components"
+    echo "  /...        Make FroboMind components listed in $FILE_MAKE in this directory"
+    echo "  clean       Make clean"
+    echo "  cleanall    Clean up everything (remove devel and build directories)"
     echo "Options:"
-    echo "  -i              Do not ignore (other) components" 
+    echo "  -i          Do not ignore (other) components" 
     echo ""
 }
 
@@ -140,7 +145,8 @@ case $CMD in
     list_all_packages
     ;;
   app)
-    APP_FIRST=`echo $APP | cut -c1-1)`
+    APP_FIRST=`echo $APP | cut -c1-1`
+	echo $APP_FIRST
     case "$APP_FIRST" in
       /)
         ROOT_APP=$ROOT_SRC$APP 
@@ -154,11 +160,16 @@ case $CMD in
             # removing ignore files
             APP_PACKAGES=`cat $ROOT_APP/$FILE_MAKE`
             for LINE in $APP_PACKAGES; do # for each directory
-              echo "  Adding directory:" $LINE
-              FILE_IGNORE=$ROOT_SRC$LINE/CATKIN_IGNORE
-              if [ -e $FILE_IGNORE ]; then
-                rm $FILE_IGNORE
-              fi
+              FIRST_CHAR=`echo $LINE | cut -c1-1`
+              case $FIRST_CHAR in
+                /) 
+                  echo "  Adding directory:" $LINE
+                  FILE_IGNORE=$ROOT_SRC$LINE/CATKIN_IGNORE
+                  if [ -e $FILE_IGNORE ]; then
+                    rm $FILE_IGNORE
+                  fi
+                  ;;
+               esac
             done 
             cd $ROOT_WS
             catkin_make
@@ -189,17 +200,14 @@ case $CMD in
     echo "completed"
     ;;
   cleanall)
-    echo "Cleaning up everything"
+    echo "Removing ignore from all packages"
     remove_ignore_from_all_packages
+    echo "Deleting devel and build directories"
     if [ -d $ROOT_WS/devel ]; then
       rm -r $ROOT_WS/devel
     fi
     if [ -d $ROOT_WS/build ]; then
       rm -r $ROOT_WS/build
-    fi
-    if [ $IGNORE -eq 0 ]; then
-      echo "Ignoring all packages"
-      add_ignore_to_all_packages
     fi
     ;;
 esac  
