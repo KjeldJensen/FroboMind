@@ -1,0 +1,14 @@
+float64 easting
+float64 northing
+float64 height
+float64 heading
+string id
+string nav_mode
+float64 vel_lin
+float64 vel_ang
+float64 vel_vert
+float64 pause
+string implement_in
+string implement_out
+float64 tolerance
+float64 dist

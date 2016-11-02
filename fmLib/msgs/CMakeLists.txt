@@ -40,6 +40,8 @@ find_package(catkin REQUIRED COMPONENTS message_generation roscpp rospy std_msgs
 	RemoteControl.msg
 	RemoteControlFeedback.msg
 	RoutePt.msg
+	route_pt.msg
+	route_plan.msg
 	row.msg
 	rtq.msg
 	rtq_command.msg
