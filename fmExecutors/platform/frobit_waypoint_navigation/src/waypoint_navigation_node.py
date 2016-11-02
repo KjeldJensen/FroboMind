@@ -66,7 +66,7 @@ class WptNavNode():
 		self.state = self.STATE_IDLE
 		self.state_prev = self.state
 		self.BHV_RC = 'RC' # remote control (platform behaviour)
-		self.BHV_WPT = 'WPT' # waypoint navigation (platform behaviour)
+		self.BHV_NAV = 'NAV' # waypoint navigation (platform behaviour)
 		self.platform_behaviour_warn = False
 		self.wait_after_arrival = 0.0
 		self.wait_timeout = 0.0
@@ -194,7 +194,7 @@ class WptNavNode():
 			rospy.loginfo(rospy.get_name() + ": This is the first waypoint")
 
 	def on_platform_behaviour_message(self, msg):
-		if msg.data == self.BHV_WPT: # if waypoint navigation mode is active
+		if msg.data == self.BHV_NAV: # if waypoint navigation mode is active
 			if self.state == self.STATE_IDLE:
 				if self.wptnav.pose != False: # if we have a valid pose				
 					self.state = self.STATE_NAVIGATE

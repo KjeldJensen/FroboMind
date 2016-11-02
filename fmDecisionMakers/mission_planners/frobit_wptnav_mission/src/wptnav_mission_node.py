@@ -59,7 +59,7 @@ class mission_node():
 
 		# robot state
 		self.BHV_RC = 'RC'
-		self.BHV_WPT = 'WPT'
+		self.BHV_NAV = 'NAV'
 		self.bhv = self.BHV_RC
 
 		# load behaviours
@@ -95,14 +95,14 @@ class mission_node():
 		if (msg.switches & 0x01) == 0:
 			behaviour = self.BHV_RC
 		else:
-			behaviour = self.BHV_WPT
+			behaviour = self.BHV_NAV
 
 		# if behaviour changed
 		if behaviour != self.bhv:
 			# suspend current behavour
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.suspend()
-			elif self.bhv == self.BHV_WPT:
+			elif self.bhv == self.BHV_NAV:
 				self.bhv_wn.suspend()
 	
 			# activate new behaviour
@@ -110,7 +110,7 @@ class mission_node():
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.activate()
 				rospy.loginfo(rospy.get_name() + ": Switching to remote control behaviour")
-			elif self.bhv == self.BHV_WPT:
+			elif self.bhv == self.BHV_NAV:
 				self.bhv_wn.activate()
 				rospy.loginfo(rospy.get_name() + ": Switching to waypoint navigation behaviour")
 			self.publish_active_behaviour_message()
@@ -118,7 +118,7 @@ class mission_node():
 		# pass remote control info to current behaviour
 		if self.bhv == self.BHV_RC:
 			self.bhv_rc.on_rc_topic(msg)
-		elif self.bhv == self.BHV_WPT:
+		elif self.bhv == self.BHV_NAV:
 			self.bhv_wn.on_rc_topic(msg)
 
 	def publish_deadman_message(self):
@@ -127,7 +127,7 @@ class mission_node():
 		# retrieve deadman_state from current behaviour
 		if self.bhv == self.BHV_RC:
 			self.deadman_msg.data = self.bhv_rc.deadman_state
-		elif self.bhv == self.BHV_WPT:
+		elif self.bhv == self.BHV_NAV:
 			self.deadman_msg.data = self.bhv_wn.deadman_state
 
 		# print a warning if the deadman_state has changed
@@ -152,7 +152,7 @@ class mission_node():
 			if self.bhv == self.BHV_RC:
 				self.bhv_rc.update()
 			# if waypoint navigation behaviour
-			elif self.bhv == self.BHV_WPT:
+			elif self.bhv == self.BHV_NAV:
 				self.bhv_wn.update()
 
 			# publish messages
