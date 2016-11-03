@@ -5,7 +5,7 @@ float64 northing
 float64 orientation
 int8 state
 int8 mode
-int32 task
+string implement_out
 # ab line
 string b_id
 float64 b_easting
