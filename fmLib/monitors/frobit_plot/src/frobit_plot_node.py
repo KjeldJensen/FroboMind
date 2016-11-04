@@ -37,6 +37,7 @@ Revision
 2014-04-19 KJ Added support for reversing the avatar
 2014-06-19 KJ Various bug fixes
 2016-01-17 KJ Changed 'avatar_reverse' to the global /caster_front parameter
+2016-11-04 KJ Updated to support new navigation_status msg
 """
 
 # ROS imports
@@ -45,7 +46,7 @@ import numpy as np
 from math import sqrt, atan2, pi
 from nav_msgs.msg import Odometry
 from msgs.msg import gpgga_tranmerc
-from msgs.msg import waypoint_navigation_status
+from msgs.msg import navigation_status
 from frobit_plot import frobit_plot
 
 class ROSnode():
@@ -86,13 +87,13 @@ class ROSnode():
 		pose_topic = rospy.get_param("~pose_sub",'/fmKnowledge/pose')
 		gnss_topic = rospy.get_param("~gnss_sub",'/fmInformation/gpgga_tranmerc')
 		odom_topic = rospy.get_param("~odom_sub",'/fmKnowledge/odometry')
-		wptnav_status_topic = rospy.get_param("~wptnav_status_sub",'/fmData/wptnav_status')
+		nav_status_topic = rospy.get_param("~nav_status_sub",'/fmData/navigation_status')
 
 		# Setup subscription topic callbacks
 		rospy.Subscriber(pose_topic, Odometry, self.on_pose_topic)
 		rospy.Subscriber(gnss_topic, gpgga_tranmerc, self.on_gnss_topic)
 		rospy.Subscriber(odom_topic, Odometry, self.on_odom_topic)
-		rospy.Subscriber(wptnav_status_topic, waypoint_navigation_status, self.on_wptnav_status_topic)
+		rospy.Subscriber(nav_status_topic, navigation_status, self.on_nav_status_topic)
 
 		# Call updater function
 		self.r = rospy.Rate(map_update_frequency) # set updater frequency
@@ -131,8 +132,14 @@ class ROSnode():
 		self.latest_odo_yaw = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz)
 
 	# handle incoming waypoint navigation status messages
-	def on_wptnav_status_topic(self, msg):
-		self.plot.set_wptnav (msg.mode, msg.a_easting, msg.a_northing, msg.b_easting, msg.b_northing, msg.target_easting, msg.target_northing)
+	def on_nav_status_topic(self, msg):
+		if msg.status == 'NAV':
+			mode = 1
+		elif msg.status == 'TURN':
+			mode = 2
+		else:
+			mode = 0
+		self.plot.set_wptnav (mode, msg.a_easting, msg.a_northing, msg.b_easting, msg.b_northing, msg.target_easting, msg.target_northing)
 
 	# update loop
 	def updater(self):
