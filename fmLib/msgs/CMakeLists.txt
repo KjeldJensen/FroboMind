@@ -35,6 +35,7 @@ find_package(catkin REQUIRED COMPONENTS message_generation roscpp rospy std_msgs
 	magnetometer.msg
 	motor_status.msg
 	nmea.msg
+	navigation_status.msg
 	PropulsionModuleFeedback.msg
 	PropulsionModuleStatus.msg
 	RemoteControl.msg
@@ -50,7 +51,6 @@ find_package(catkin REQUIRED COMPONENTS message_generation roscpp rospy std_msgs
 	steering_angle_cmd.msg
 	StringStamped.msg
 	StringArrayStamped.msg
-	waypoint_navigation_status.msg
 	velocity.msg
  )
 
