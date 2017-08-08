@@ -69,7 +69,7 @@ include_directories(include
 add_executable(sparkfun_9dof_node src/sparkfun_9dof_node.cpp src/sparkfun_9dof.cpp)
 
 ## Add dependencies to the executable
-add_dependencies(sparkfun_9dof_node ${PROJECT_NAME} msgs_gencpp sensor_msgs_gencpp)
+add_dependencies(sparkfun_9dof_node ${PROJECT_NAME} msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(sparkfun_9dof_node
