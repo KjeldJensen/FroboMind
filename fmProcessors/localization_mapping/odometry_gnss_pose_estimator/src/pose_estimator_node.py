@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #*****************************************************************************
 # FroboMind Pose Estimator Node
-# Copyright (c) 2013-2014, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2013-2017, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@ Revision
 2014-03-18 KJ Various bug fixes and computation optimizations
 2014-04-21 KJ Fixed EKF problems.
 2014-06-19 KJ "driving forward" detection now accepts zero encoder updates.
+2017-09-15 KJ Added queue_size to publishers
 """
 # ROS imports
 import rospy,tf
@@ -118,9 +119,9 @@ class PoseEstimatorNode():
 		rospy.Subscriber(self.gga_topic, gpgga_tranmerc, self.on_gga_topic)
 
 		# setup publish topics
-		self.pose_pub = rospy.Publisher(self.pose_topic, Odometry)
+		self.pose_pub = rospy.Publisher(self.pose_topic, Odometry, queue_size = 1)
 		self.br = tf.TransformBroadcaster()
-		self.pose_status_pub = rospy.Publisher(self.pose_status_topic, IntArrayStamped)
+		self.pose_status_pub = rospy.Publisher(self.pose_status_topic, IntArrayStamped, queue_size = 0)
 
 		# initialize estimator (preprocessing)
 		self.pp = odometry_gnss_pose_preprocessor (robot_max_velocity)
