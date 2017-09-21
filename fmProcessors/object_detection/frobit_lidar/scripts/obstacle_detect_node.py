@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-#/****************************************************************************
+#/***********-*****************************************************************
 # Frobit lidar obstacle node 
-# Copyright (c) 2015-2016, Kjeld Jensen <kjeld@frobomind.org>
+# Copyright (c) 2015-2017, Kjeld Jensen <kjeld@frobomind.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,88 +32,16 @@ http://wiki.ros.org/laser_pipeline/Tutorials/IntroductionToWorkingWithLaserScann
 
 Revision
 2015-09-17 KJ First version
+2017-09-21 KJ Implemented a better algorithm
 """
 
 import rospy
 from sensor_msgs.msg import LaserScan
 from msgs.msg import IntArrayStamped
-from math import pi, sqrt, cos, atan2
+from obstacle_detect import obstacle_detect
+from math import pi
 
 node_name = 'obstacle'
-
-class obstacle_detect_algorithm():
-	def __init__(self, obstacle_scan_width, dist_threshold_warn, dist_threshold_alarm):
-		self.obstacle_scan_width = obstacle_scan_width
-		self.dist_threshold_warn = dist_threshold_warn
-		self.dist_threshold_alarm = dist_threshold_alarm
-
-		self.params_set = False
-
-	def set_params(self, range_min, range_max, angle_min, angle_max, angle_step, num_ranges):
-		# save recieved parameters
-		self.range_min = range_min
-		self.range_max = range_max
-		self.angle_min = angle_min
-		self.angle_max = angle_max
-		self.angle_step = angle_step
-
-		# calculate additional parameters
-		self.angle_total = self.angle_max-self.angle_min
-		self.v_len = num_ranges
-		self.v_c = int(self.v_len/2)
-
-		angle_warn = atan2 (self.obstacle_scan_width, self.dist_threshold_warn)
-		angle_alarm = atan2 (self.obstacle_scan_width, self.dist_threshold_alarm)
-
-		steps_warn = int(angle_warn/self.angle_step)
-		self.warn_l = self.v_c + steps_warn
-		self.warn_r = self.v_c - steps_warn
-		steps_alarm = int(angle_alarm/self.angle_step)
-		self.alarm_l = self.v_c + steps_alarm
-		self.alarm_r = self.v_c - steps_alarm
-
-		self.alarm_thresh_right = []
-		for i in xrange (self.alarm_r, self.v_c):
-			self.alarm_thresh_right.append(self.dist_threshold_alarm / cos(abs(i-self.v_c)*self.angle_step))	
-		self.alarm_thresh_left = []
-		for i in xrange (self.v_c, self.alarm_l):
-			self.alarm_thresh_left.append(self.dist_threshold_alarm / cos(abs(i-self.v_c)*self.angle_step))	
-
-		self.warn_thresh_right = []
-		for i in xrange (self.warn_r, self.v_c):
-			self.warn_thresh_right.append(self.dist_threshold_warn / cos(abs(i-self.v_c)*self.angle_step))	
-
-		self.warn_thresh_left = []
-		for i in xrange (self.v_c, self.warn_l):
-			self.warn_thresh_left.append(self.dist_threshold_warn / cos(abs(i-self.v_c)*self.angle_step))	
-
-		self.params_set = True
-
-	def new_scan(self, scan):
-		if self.params_set == True:
-			status_right  = 0
-			for i in xrange (self.warn_r, self.v_c):
-				if scan[i] < self.warn_thresh_right[i-self.warn_r]:
-					status_right = 1
-
-			for i in xrange (self.alarm_r, self.v_c):
-				if scan[i] < self.alarm_thresh_right[i-self.alarm_r]:
-					status_right = 2
-
-			status_left  = 0
-			for i in xrange (self.v_c, self.warn_l):
-				if scan[i] < self.warn_thresh_left[i-self.v_c]:
-					status_left = 1
-
-			for i in xrange (self.v_c, self.alarm_l):
-				if scan[i] < self.alarm_thresh_left[i-self.v_c]:
-					status_left = 2
-
-			return [status_left, status_right]
-
-	def update(self):
-		pass
-
 	
 class ros_node():
 	def __init__(self):
@@ -122,13 +50,16 @@ class ros_node():
 		self.first_scan = True
 
 		# read parameters
-		self.obstacle_scan_width = rospy.get_param("~obstacle_scan_width", 0.2) # [m (from center)] 
-		self.dist_threshold_warn = rospy.get_param("~distance_threshold_warning", 1.0) # [m]
-		self.dist_threshold_alarm = rospy.get_param("~distance_threshold_alarm", 0.3) # [m]
+		self.ahead_warn = rospy.get_param("~ahead_threshold_warning", 3.0) # [m]
+		self.lateral_warn = rospy.get_param("~lateral_threshold_warning", 0.5) # [m]
+		self.ahead_alarm = rospy.get_param("~ahead_threshold_alarm", 1.5) # [m]
+		self.lateral_alarm = rospy.get_param("~lateral_threshold_alarm", 0.5) # [m]
+		self.ang_res = rospy.get_param("~angular_resolution", 1.0) * pi/180.0 # [rad]
+		self.min_range = rospy.get_param("~minimum_range", 0.05) # [m]
 		self.scans_skip = rospy.get_param("~scans_skip", 0) # [m]
 
 		# initialize wall finding algorithm
-		self.od = obstacle_detect_algorithm(self.obstacle_scan_width, self.dist_threshold_warn, self.dist_threshold_alarm)
+		self.od = obstacle_detect(self.ahead_warn, self.lateral_warn, self.ahead_alarm, self.lateral_alarm, self.min_range)
 
 		# get topic names
 		scan_topic = rospy.get_param("~scan_sub", "/base_scan")
@@ -151,7 +82,8 @@ class ros_node():
 			if self.first_scan == True:
 				self.first_scan = False
 				#print msg.angle_min*180/pi, msg.angle_max*180/pi, msg.angle_increment*180/pi, msg.range_min, msg.range_max, len(msg.ranges)
-				self.od.set_params(msg.range_min, msg.range_max, msg.angle_min, msg.angle_max, msg.angle_increment, len(msg.ranges))
+
+				self.od.set_params(self.ang_res, len(msg.ranges))
 			self.scans_skipped_cnt = 0
 			self.obstacle_msg.data = self.od.new_scan(msg.ranges)
 			self.publish_obstacle_message()

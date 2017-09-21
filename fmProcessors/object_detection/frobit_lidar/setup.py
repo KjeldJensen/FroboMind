@@ -2,6 +2,6 @@ from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
 d = generate_distutils_setup(
-  scripts=['src/obstacle_detect_node.py'],)
+  scripts=['scripts/obstacle_detect_node.py'],)
 setup(**d)
 
